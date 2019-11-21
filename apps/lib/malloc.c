@@ -81,10 +81,40 @@ void free(void *ptr) {
 
 void *calloc(size_t num, size_t size) {
   void *ptr = malloc(num * size);
-  memset(ptr, 0, num * size);
+  if (ptr != NULL) {
+    memset(ptr, 0, num * size);
+  }
   return ptr;
 }
 
+static size_t malloc_size(void *ptr) {
+  mblock_t *mb = (mblock_t *)(((uint8_t*)ptr) - sizeof(mblock_t));
+  return mb->size;
+}
+
+void *realloc(void * ptr, size_t size) {
+  void *new;
+
+  if (!ptr) {
+    new = malloc(size);
+    if (!new) { goto error; }
+  } else {
+    if (malloc_size(ptr) < size) {
+      new = malloc(size);
+      if (!new) { goto error; }
+
+      memcpy(new, ptr, malloc_size(ptr));
+
+      free(ptr);
+    } else {
+      new = ptr;
+    }
+  }
+
+  return new;
+error:
+  return NULL;
+}
 void init_heap() {
   heap_start = (uint64_t)&__user_app_end;
   heap_end = END_OF_INITIALISED_HEAP;
